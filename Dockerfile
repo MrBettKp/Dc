@@ -43,4 +43,4 @@ RUN useradd -r -s /bin/false indexer
 USER indexer
 
 # Default command
-CMD ["indexer", "--wallet", "7cMEhpt9y3inBNVv8fNnuaEbx7hKHZnLvR1KWKKxuDDU"]
+CMD ["indexer", "--wallet", "7cMEhpt9y3inBNVv8fNnuaEbx7hKHZnLvR1KWKKxuDDU", "--service"]
