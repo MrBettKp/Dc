@@ -1,5 +1,5 @@
-# Use the official Rust image with version 1.80
-FROM rust:1.80-slim AS builder
+# Use the official Rust image with version 1.80+
+FROM rust:1.80-slim
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
@@ -10,8 +10,8 @@ RUN apt-get update && apt-get install -y \
 # Set working directory
 WORKDIR /app
 
-# Copy Cargo.toml and Cargo.lock for dependency caching
-COPY Cargo.toml Cargo.lock ./
+# Copy Cargo.toml first for better caching
+COPY Cargo.toml ./
 
 # Create src directory and a dummy main.rs for dependency caching
 RUN mkdir src && echo "fn main() {}" > src/main.rs
@@ -35,8 +35,8 @@ RUN apt-get update && apt-get install -y \
     libssl3 \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy the binary from the builder stage
-COPY --from=builder /app/target/release/indexer /usr/local/bin/indexer
+# Copy the binary from builder stage
+COPY --from=0 /app/target/release/indexer /usr/local/bin/indexer
 
 # Create a non-root user
 RUN useradd -r -s /bin/false indexer
