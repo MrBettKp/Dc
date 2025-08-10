@@ -10,8 +10,8 @@ RUN apt-get update && apt-get install -y \
 # Set working directory
 WORKDIR /app
 
-# Copy Cargo files first for better caching
-COPY Cargo.toml Cargo.lock ./
+# Copy Cargo.toml first for better caching
+COPY Cargo.toml ./
 
 # Create src directory and a dummy main.rs for dependency caching
 RUN mkdir src && echo "fn main() {}" > src/main.rs
