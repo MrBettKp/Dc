@@ -1,5 +1,5 @@
-# Use the official Rust image with version 1.80+
-FROM rust:1.80-slim
+# Use the official Rust nightly image
+FROM rustlang/rust:nightly-slim
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
@@ -17,14 +17,14 @@ COPY Cargo.toml ./
 RUN mkdir src && echo "fn main() {}" > src/main.rs
 
 # Build dependencies (this layer will be cached)
-RUN cargo build --release
+RUN cargo +nightly build --release
 RUN rm src/main.rs
 
 # Copy source code
 COPY src/ src/
 
 # Build the application
-RUN cargo build --release
+RUN cargo +nightly build --release
 
 # Create a smaller runtime image
 FROM debian:bookworm-slim
