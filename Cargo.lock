@@ -19,9 +19,6 @@ name = "bs58"
 version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bf88ba1141d185c399bee5288d850d63b8369520c1eafc32a0430b5b6c287bf4"
-dependencies = [
- "tinyvec",
-]
 
 [[package]]
 name = "chrono"
@@ -115,33 +112,21 @@ dependencies = [
 
 [[package]]
 name = "solana-client"
-version = "2.0.0"
+version = "1.18.26"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "abc123def456"
-dependencies = [
- "solana-sdk",
- "tokio",
-]
 
 [[package]]
 name = "solana-sdk"
-version = "2.0.0"
+version = "1.18.26"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "def456abc123"
-dependencies = [
- "bs58",
- "serde",
-]
 
 [[package]]
 name = "solana-transaction-status"
-version = "2.0.0"
+version = "1.18.26"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ghi789jkl012"
-dependencies = [
- "serde",
- "serde_json",
-]
 
 [[package]]
 name = "solana-usdc-indexer"
@@ -163,12 +148,9 @@ dependencies = [
 
 [[package]]
 name = "spl-token"
-version = "6.0.0"
+version = "4.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "xyz789abc012"
-dependencies = [
- "solana-sdk",
-]
 
 [[package]]
 name = "syn"
@@ -180,12 +162,6 @@ dependencies = [
  "quote",
  "unicode-ident",
 ]
-
-[[package]]
-name = "tinyvec"
-version = "1.8.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "445e881f4f6d382d5f27c034e25eb92edd7c784ceab92a0937db7f2e9471b938"
 
 [[package]]
 name = "tokio"
