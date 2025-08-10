@@ -34,6 +34,10 @@ struct Args {
     /// Hours to look back (default: 24)
     #[arg(long, default_value_t = 24)]
     hours: u64,
+
+    /// Run as a service (keep running and re-index every hour)
+    #[arg(long, default_value_t = false)]
+    service: bool,
 }
 
 pub struct SolanaIndexer {
@@ -203,18 +207,16 @@ impl SolanaIndexer {
     }
 }
 
-#[tokio::main]
-async fn main() -> Result<()> {
-    let args = Args::parse();
-    
-    println!("🚀 Solana USDC Indexer Starting...");
-    println!("💰 Target wallet: {}", args.wallet);
-    println!("🌐 RPC endpoint: {}", args.rpc_url);
-    
+async fn run_indexer_once(args: &Args) -> Result<()> {
     let indexer = SolanaIndexer::new(&args.rpc_url, &args.wallet)?;
     let transfers = indexer.backfill_usdc_transfers(args.hours).await?;
 
     // Display results
+    display_results(&transfers).await?;
+    Ok(())
+}
+
+async fn display_results(transfers: &[UsdcTransfer]) -> Result<()> {
     if transfers.is_empty() {
         println!("\n📭 No USDC transfers found in the specified time period.");
     } else {
@@ -224,7 +226,7 @@ async fn main() -> Result<()> {
         let mut total_sent = 0u64;
         let mut total_received = 0u64;
         
-        for transfer in &transfers {
+        for transfer in transfers {
             let direction_symbol = match transfer.direction {
                 TransferDirection::Sent => "📤",
                 TransferDirection::Received => "📥",
@@ -264,4 +266,38 @@ async fn main() -> Result<()> {
     }
 
     Ok(())
+}
+
+#[tokio::main]
+async fn main() -> Result<()> {
+    let args = Args::parse();
+    
+    println!("🚀 Solana USDC Indexer Starting...");
+    println!("💰 Target wallet: {}", args.wallet);
+    println!("🌐 RPC endpoint: {}", args.rpc_url);
+    
+    if args.service {
+        println!("🔄 Running as a service - will re-index every hour");
+        loop {
+            match run_indexer_once(&args).await {
+                Ok(()) => println!("✅ Indexing cycle completed successfully"),
+                Err(e) => println!("❌ Indexing cycle failed: {}", e),
+            }
+            
+            println!("😴 Sleeping for 1 hour before next indexing cycle...");
+            tokio::time::sleep(tokio::time::Duration::from_secs(3600)).await;
+        }
+    } else {
+        // Run once and keep alive for hosting platforms
+        run_indexer_once(&args).await?;
+        
+        println!("🏁 Indexing completed! Keeping service alive for hosting platform...");
+        println!("📝 To run as a continuous service, use --service flag");
+        
+        // Keep the service alive
+        loop {
+            tokio::time::sleep(tokio::time::Duration::from_secs(300)).await; // Sleep 5 minutes
+            println!("💓 Service is alive - {}", Utc::now().format("%Y-%m-%d %H:%M:%S UTC"));
+        }
+    }
 }
