@@ -43,5 +43,4 @@ RUN useradd -r -s /bin/false indexer
 USER indexer
 
 # Default command
-ENTRYPOINT ["indexer"]
-CMD ["--help"]
+CMD ["indexer", "--wallet", "7cMEhpt9y3inBNVv8fNnuaEbx7hKHZnLvR1KWKKxuDDU"]
