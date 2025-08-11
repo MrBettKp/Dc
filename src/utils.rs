@@ -1,5 +1,4 @@
 use solana_transaction_status::UiTransactionTokenBalance;
-use solana_transaction_status::TransactionTokenBalance;
 use crate::transfer::TokenTransferInfo;
 use std::collections::HashMap;
 
@@ -14,8 +13,16 @@ pub fn is_usdc_mint(mint: &str) -> bool {
 pub fn parse_token_transfers(
     meta: &solana_transaction_status::UiTransactionStatusMeta,
 ) -> Option<Vec<TokenTransferInfo>> {
-    let pre_balances = meta.pre_token_balances.as_ref()?;
-    let post_balances = meta.post_token_balances.as_ref()?;
+    // Handle OptionSerializer by extracting the actual values
+    let pre_balances = match &meta.pre_token_balances {
+        solana_transaction_status::option_serializer::OptionSerializer::Some(balances) => balances,
+        _ => return None,
+    };
+    
+    let post_balances = match &meta.post_token_balances {
+        solana_transaction_status::option_serializer::OptionSerializer::Some(balances) => balances,
+        _ => return None,
+    };
 
     // Create maps for easier lookup
     let mut pre_balance_map: HashMap<usize, &UiTransactionTokenBalance> = HashMap::new();
@@ -83,9 +90,15 @@ pub fn parse_token_transfers(
             
             if change != 0 {
                 let owner = if let Some(post) = post_balance_map.get(&account_index) {
-                    post.owner.clone().unwrap_or_default()
+                    match &post.owner {
+                        solana_transaction_status::option_serializer::OptionSerializer::Some(owner) => owner.clone(),
+                        _ => String::new(),
+                    }
                 } else if let Some(pre) = pre_balance_map.get(&account_index) {
-                    pre.owner.clone().unwrap_or_default()
+                    match &pre.owner {
+                        solana_transaction_status::option_serializer::OptionSerializer::Some(owner) => owner.clone(),
+                        _ => String::new(),
+                    }
                 } else {
                     String::new()
                 };
