@@ -2,17 +2,14 @@ use anyhow::{anyhow, Result};
 use chrono::{DateTime, Duration, Utc};
 use clap::Parser;
 use solana_client::rpc_client::RpcClient;
+use solana_client::rpc_config::{RpcTransactionConfig};
 use solana_sdk::{
     commitment_config::CommitmentConfig,
     pubkey::Pubkey,
     signature::Signature,
 };
-use solana_transaction_status::{
-    option_serializer::OptionSerializer,
-    UiTransactionEncoding,
-};
+use solana_transaction_status::UiTransactionEncoding;
 use std::str::FromStr;
-use std::collections::HashMap;
 
 mod transfer;
 mod utils;
@@ -75,7 +72,7 @@ impl SolanaIndexer {
             
             let signatures = self.client.get_signatures_for_address_with_config(
                 &self.wallet_pubkey,
-                solana_client::rpc_client_api::config::RpcTransactionHistoryConfig {
+                solana_client::rpc_client::GetConfirmedSignaturesForAddress2Config {
                     limit: Some(limit),
                     before: before_signature,
                     until: None,
@@ -157,7 +154,7 @@ impl SolanaIndexer {
     async fn process_transaction(&self, signature: Signature) -> Result<Vec<UsdcTransfer>> {
         let transaction = self.client.get_transaction_with_config(
             &signature,
-            solana_client::rpc_client_api::config::RpcTransactionConfig {
+            RpcTransactionConfig {
                 encoding: Some(UiTransactionEncoding::Json),
                 commitment: Some(CommitmentConfig::confirmed()),
                 max_supported_transaction_version: Some(0),
@@ -270,18 +267,46 @@ async fn display_results(transfers: &[UsdcTransfer]) -> Result<()> {
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let args = Args::parse();
-    
+    // Set up panic handler for better debugging
+    std::panic::set_hook(Box::new(|panic_info| {
+        eprintln!("🚨 PANIC: {}", panic_info);
+        if let Some(location) = panic_info.location() {
+            eprintln!("📍 Location: {}:{}", location.file(), location.line());
+        }
+    }));
+
     println!("🚀 Solana USDC Indexer Starting...");
+    
+    let args = match Args::try_parse() {
+        Ok(args) => {
+            println!("✅ Arguments parsed successfully");
+            args
+        }
+        Err(e) => {
+            eprintln!("❌ Failed to parse arguments: {}", e);
+            // If argument parsing fails, run with default values
+            Args {
+                wallet: "7cMEhpt9y3inBNVv8fNnuaEbx7hKHZnLvR1KWKKxuDDU".to_string(),
+                rpc_url: "https://api.mainnet-beta.solana.com".to_string(),
+                hours: 24,
+                service: false,
+            }
+        }
+    };
+    
     println!("💰 Target wallet: {}", args.wallet);
     println!("🌐 RPC endpoint: {}", args.rpc_url);
+    println!("⏰ Hours to index: {}", args.hours);
     
     if args.service {
         println!("🔄 Running as a service - will re-index every hour");
         loop {
             match run_indexer_once(&args).await {
-                Ok(()) => println!("✅ Indexing cycle completed successfully"),
-                Err(e) => println!("❌ Indexing cycle failed: {}", e),
+                Ok(()) => println!("✅ Indexing cycle completed successfully at {}", Utc::now().format("%Y-%m-%d %H:%M:%S UTC")),
+                Err(e) => {
+                    eprintln!("❌ Indexing cycle failed: {}", e);
+                    eprintln!("🔄 Will retry in next cycle...");
+                }
             }
             
             println!("😴 Sleeping for 1 hour before next indexing cycle...");
@@ -289,15 +314,36 @@ async fn main() -> Result<()> {
         }
     } else {
         // Run once and keep alive for hosting platforms
-        run_indexer_once(&args).await?;
+        println!("🎯 Running single indexing cycle...");
         
-        println!("🏁 Indexing completed! Keeping service alive for hosting platform...");
+        match run_indexer_once(&args).await {
+            Ok(()) => {
+                println!("🏁 Indexing completed successfully!");
+            }
+            Err(e) => {
+                eprintln!("❌ Indexing failed: {}", e);
+                eprintln!("📋 This might be due to:");
+                eprintln!("  • Network connectivity issues");
+                eprintln!("  • RPC rate limiting");
+                eprintln!("  • Invalid wallet address");
+                eprintln!("  • Solana RPC endpoint issues");
+            }
+        }
+        
+        println!("🔄 Keeping service alive for hosting platform...");
         println!("📝 To run as a continuous service, use --service flag");
         
-        // Keep the service alive
+        // Keep the service alive with more frequent heartbeats
+        let mut counter = 0;
         loop {
-            tokio::time::sleep(tokio::time::Duration::from_secs(300)).await; // Sleep 5 minutes
-            println!("💓 Service is alive - {}", Utc::now().format("%Y-%m-%d %H:%M:%S UTC"));
+            counter += 1;
+            tokio::time::sleep(tokio::time::Duration::from_secs(60)).await; // Sleep 1 minute
+            println!("💓 Service heartbeat #{} - {}", counter, Utc::now().format("%Y-%m-%d %H:%M:%S UTC"));
+            
+            // Every 10 minutes, show memory info
+            if counter % 10 == 0 {
+                println!("📊 Service has been alive for {} minutes", counter);
+            }
         }
     }
 }
